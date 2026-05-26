@@ -1,0 +1,27 @@
+{
+  "name": "netfire",
+  "version": "1.0.0",
+  "description": "On a trip and very Bored , This apps allows you to stream all Netflix movies and series ,Thousands on Games and Also allows you To download all Steam games.",
+  "keywords": [
+    "Movies"
+  ],
+  "homepage": "https://github.com/CkWebGamingStudios/NetFire#readme",
+  "bugs": {
+    "url": "https://github.com/CkWebGamingStudios/NetFire/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CkWebGamingStudios/NetFire.git"
+  },
+  "license": "ISC",
+  "author": "Ck Web Gaming Studios",
+  "type": "commonjs",
+  "main": "index.html",
+  "scripts": {
+    "test": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "http-proxy-middleware": "^4.0.0"
+  }
+}

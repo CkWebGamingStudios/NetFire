@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Launcher</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f0f0f;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        header {
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: normal;
+            margin-bottom: 20px;
+        }
+
+        .categories {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .categories::-webkit-scrollbar {
+            height: 5px;
+        }
+
+        .categories::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        .categories::-webkit-scrollbar-thumb {
+            background: #444;
+        }
+
+        .category-btn {
+            background: #2a2a2a;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 0.95rem;
+        }
+
+        .category-btn:hover {
+            background: #3a3a3a;
+        }
+
+        .category-btn.active {
+            background: #fff;
+            color: #000;
+        }
+
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+        }
+
+        .app-card {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .app-card:hover {
+            transform: scale(1.05);
+            background: #252525;
+        }
+
+        .app-card:focus {
+            outline: 2px solid #fff;
+        }
+
+        .app-logo {
+            width: 100%;
+            height: 100px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .app-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .app-name {
+            font-size: 0.95rem;
+            font-weight: normal;
+            text-align: center;
+        }
+
+        .app-card.hidden {
+            display: none;
+        }
+
+        iframe {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            z-index: 1000;
+            background: #000;
+        }
+
+        .close-btn {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 1001;
+            font-size: 1rem;
+        }
+
+        .close-btn:hover {
+            background: #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Apps</h1>
+        </header>
+
+        <div class="categories" id="categories"></div>
+        <div class="apps-grid" id="appsGrid"></div>
+    </div>
+
+    <button class="close-btn" id="closeBtn">Close</button>
+    <iframe id="appFrame"></iframe>
+
+    <script>
+        let appsData = [];
+        let currentCategory = 'all';
+
+        // Load apps from JSON file
+        async function loadApps() {
+            try {
+                const response = await fetch('apps.json');
+                appsData = await response.json();
+                renderCategories();
+                renderApps();
+            } catch (error) {
+                console.error('Error loading apps:', error);
+                // Fallback to demo data if JSON file doesn't exist
+                loadDemoData();
+            }
+        }
+
+        // Demo data as fallback
+        function loadDemoData() {
+            appsData = [
+                [
+    {
+        "name": "NetMirror",
+        "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAMAAABF0y+mAAAAe1BMVEUAAAASAQJoBQpvBQrUCRTvCRXrCRW6CRQnAgN9BQvlCRRHAwaZBg3oCRRNAwdUBAncCRSTBg6lBw+/CRTOCRTKCRXFCRQ6AwauCRVxBQq0CRWaCRWdCRWkCRVjBg2qCRUwAwVDBAhbBQsXAQOLBgyVCRUqAwiLCRUkAQM/aLMQAAABG0lEQVR4AbWQBbLCMBRFbyVJCYQGInXc9r/C31jnG+Ockcp5jk+T4Rs5vlOUhLIKgRUn629uQwTngm7hqKmUu295hDsEh2Mvy1JhQfIA3WCGlVrrb4lCBCt8D22saZJUprXBkg5AZ6yydZL9MA5TyGRuIMsYOyBQHafpeIhDATipvu/Tpuf2eGzP0K4yOQEZa9s2yUvftv0VHXXzrlyb4/GYyhas710vJ4UBMLeZ0kCdYswtbX3dBtk0DuM5SauUzYCbT1Woxvv9nu6cG+uXPhO/6u1xvz9HRGptjN4uVyTq/pxMkpXUuqzd3Wi4hBBkh4QuS4mZF+ERckViL3keXmh0GyysabqHFM5RjW9clxdNKCUKb6hvtzU+yxeHTxPLM9FIegAAAABJRU5ErkJggg==",
+        "url": "https://net22.cc",
+        "category": "movie-streaming"
+    },
+    {
+        "name": "Arise",
+        "logo": "https://arise-str.vercel.app/logo.jpg",
+        "url": "https://arise-str.vercel.app",
+        "category": "movie-streaming"
+    },
+    {
+        "name": "Minecraft Web Client",
+        "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAMAAABF0y+mAAAAqFBMVEVHcEwZFzwUATAWDjscJUsPACsaHEEzYYBHnsJOps07c5EZEjkPAi0qTW1Glrhyut+0z+mNxOUMACciOFpCialbr9awyeSCoMcALnMBHVdmirk+e5m61OwsW5UAFEkSTY6fv+KnxOOlvt0DPnyeudqSrtI+fJsBKF4CCj6hx+dEb6XI2+9Ueqw2ZJ1EiafQ4PNHkK8AOYbB1u0AI2jd6fYLCjJykrtEkLA166tGAAAAOHRSTlMADSRZcTADvf3/yxdCqfX///86k+b//////v/W///+/////////9j+/P//////3f/m//////r/7cHa1hQAAAGQSURBVHgBbZIHkoMgAADTe8HkQjuCYsQGhrPm/z87TG923XFWYTtPS7fXHwy7o6cnz2g8mc6+4dF8sVytAXAm436v+4Y2258dRJhQsF4t+/PRA3WHg98pgGzPuesJtvvZLlp8kQ3GE8ff84MfyMDlhwBMw6u6a2UOhP6BR0gAiWMsA5hY9dzC4WwNKeGpkkITopkUGScarI9DCzdHoCzMhFTUQiFZygk17G8xamGSyyKQmGNZCFTGh8BXfp7cII6zCrZfIoU9ubDScfSAdYZcBoXLeVZAk1FdlzcIijRDNYEMRSVSoKwbvQcPp69QzD3cMCWxR2KqoPvkTCs/96JaN3HkYVlR/urMCoMtrMtC6Ren0WenovZxUZydqri96YqLExkT5GcncMWzE1pnbJ3Ey4MPZ6puTkMfzuHRufwnMI11GnX5T+dvY+G8neiideayqvyzs2C742B+T4QFdyeWbHe6t2Dj2p7W7OYs2op6o+csbXvM/mfKnvt7rtZRKpk8l/uc4Gx6L6vzBQ828yf0D1DERmVwJxLFAAAAAElFTkSuQmCC",
+        "url": "https://mcraft.fun/",
+        "category": "games"
+    },
+    {
+        "name": "Vice City",
+        "logo": "data:image/png;base64,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",
+        "url": "https://dos.zone/revcdos/",
+        "category": "games"
+    },
+    {
+        "name": "FileCr",
+        "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhklEQVR4AWNwL/BBwTXXN6sCsTOxGJsBl4D4P7EYXbMwSJAEfADdgFYSDUhBN8AXiCcSg6GWCYM0UoTRbV8DxCvQ8BooPgAKdXwGHCDkZwIGEA5xnF4ASloSYcACXAZQhJETkCoSFibWAFzOn0iKAb5YDPAl3gDM6HsL8gZJXkDLopakBCIAuUvkC8I+fd8AAAAASUVORK5CYII=",
+        "url": "https://filecr.com/pc-games/",
+        "category": "game-download"
+    },
+    {
+        "name": "Dodi Repacks",
+        "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAMAAABF0y+mAAAAUVBMVEVHcEztSEP2Mif3MSb5MSfxPjvkZF/3QDbxSEn4OC/6MSb/KRv////8JBX7///8AAD9BwD9GAP7U0v5LB72ioT2dnD44N73qaT48/L2NCj3y8fJ0ngYAAAAC3RSTlMAP97B7mAX/TKHwSDAOOQAAAEKSURBVCiRZZNZEoQgDERxXFBjQATc7n/QIaAg0F+pehJCp2Xs1Ti1HIC308hK9R1oCNJdn6Hhh/DVb0is0Rj1nG4i25I4ylV96ID2EEnnbQjr0PkHuG5icRLyMqcQy2mlu9fPSdfIAFdUaqficJRm7mgAuQQIgJy+E0ZB597up3tPUnlTJTTCyKYSKuO7HAomNpcQNw93CTPjJQQe7lfAma7gFaADDKq2PMGqLT6GUNu2mtamgeqnHL70Txl17hDIPZnw2BdPZvaxPsFFIsqdytd4Wpm0ARq1OSbSytyyzZ0t236WzZrrekKkNa55TChgwSeEN4SJUTSzZGbRDKGOKkIdfwfN58/v8AdvNB+74F9u2gAAAABJRU5ErkJggg==",
+        "url": "https://dodi-repacks.site/",
+        "category": "game-download"
+    },
+    {
+        "name": "Anker Games",
+        "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAMAAABF0y+mAAABPlBMVEVHcEwJx/4J7P8H+/8NbpxOUYI1THgFhbggVIAnO2YiRXFAPmlIRWgEir4MxP8Ffq4JRG1JTngcY4sPLFVYW4xweK0FXYcJm9IRTXYCACcJGkIvL1oJ2/8Kzv8DcZ8oJlIjHkYhEzUPBzYxN1hWUGp0WlwCAB8OZ5UpL011aoOoiIELzf8DI0mViqCRal8MxP8Mxf90d5AMwf8AseuFfJPBtscMwf8Mw//o2uYKwf8Hyf8JvPkAUno9WocDO2SsobYMwf8Epd0K0P8MZ5QHDj0JbZxwY26wZFCfWUgIWIQAABQZPl4eV3fLcVPonXjSpYjxvpqpl5EWicYzcrdhO0I9hsQwqdk1ovcRdacAmtLIi29DkK0wdpdQkuAMxv+1h3Jomr+68P8AM119tMxmTk5kSEeXg3pKZbAEdqYIUHduJKVZAAAAanRSTlMANA0Xu///k////f//dxtx///+////313/////JwWd///////////g////JP///3aX/9D////xS//9rrjb////3txX/////////////f///////////////////////////////////4rxkGCSDAAAAetJREFUeAF1UoOCIzEYTqf2aNukZopBbdu2e757/xe4tfeL8xvgNSQE+ApSmVyh/IKmVKk1Wp3+c6LBKCMVFCkFn4Nm2Bu56XOaGSJWbrEqbfb3FL3DoXGyNzeU02rVyN7RKJfb42V8fq8OI7XqrWEiwKBgKOz3h0NB0sGBd+FLeK/gF0W/4OWBQfJCsQMiEnWoYyHB5xNCMbUjGiHAk1dRIm5LqLXJUDKVut206oQtTkQfNKYzaSLhZF06SshmBUrhYp0J4vbzVrchZ8gXioqSE/vKsUolVqaxs6QoFvK3BFCoEjW1nPKgspv3+UqQt5SRh5Kra0S1AHLxesPZbDZRCyM3Qk2EW+j26WzU4zmQztka7U7XjXqYt/T7gwHuYXe3027YcmkgyeWHo/FkOnOhxnyx6NGIn00n49Ewn7v1KJNbjkXsFr14td5stqt+mbb0xfEylwGA43bifoph63A8bSC/WR0PR4ime3HHcQCcW5eLOO2Xy+XV/PptC+nv5f4P8XJpnQEAkd3Pyy/xeCwfh8PrdX26vbTa5O+fu8h9Y5WDW7J/hPz2RH7/s2DgsU9umfJj2Yi/skYPkhZytT0eaZomew3Z31ddypn/YcSgQRNj3P9n5j40CsToDlD/eYeZeN5kBl+Be6vvP45rV3akPqu3AAAAAElFTkSuQmCC",
+        "url": "https://ankergames.net/games-list",
+        "category": "game-download"
+    },
+    {
+        "name": "itch.io",
+        "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADO0lEQVR4Ac1XA7DkQBCds23btm1bSWbPVvFs27ZtW6Wzbdte3OX6/Uqq5vJns/v9u6prJ43Xk5nGhkU6cqpqAZeiFDPZrarV3A5HdZM9qlrfyXkLGUMn2sJXxAK218B6ixYxXZwvdWmaHsa8BLGswaORYiMMwoPdmrZNr1w5OjOJhAuhCFdW1fnmnWsQRARTbAVvfx8PEcT3sIFvEbiBb4wy/5YX5SU7eSj53GRuzodIsvQ5cQ1a/5HcWxM4SsBuQCeR/0FPILwXkjiDGMqBTmGRoHhIDaQcZWlpWncl/mnI3eQwlMDKOznPT89XBZ8rzrZt80FHvsNga8h/EnYXYEEHbMFn4X+lqGtaGnSqnw5HOgLZQQZfnJqmUo+ITyDFdUVJQkCdSf6DeJ3epk1yZ5s2uX9rWi6sSbbe0HUKsIUP5/GAASxgAhsxEItZid6uAhmeI3ZajglHd4r4teUIf1GQM2CsLTrYnqLgLy3y34iBWMxKBNTOJrm+kP4p/Xr8yGyPYfvFpgm1ZVYiRV+J8Vc0KvOujGuYYxN8Nmxga+QWl5Y5531kVzDUakj325BJ6JeiZMK96+3axQZjDZnM1qkojay4qLzAhpyPt9z9LhY6BOzdIjZiBTbStAmiEWa5HajOWBQcOR3nLKztbOmNq4rYiCXbwCThjj5gRPsIvliwX2TdhGTcv/e1gcnCLjcyGyL9DEkCTrX14XyD0E0nygymCGXSwevbOBzJKD/6I0fEfIEMOptNt5dsQJ4DP1u3zsB8EFquaY+1L3t0P7L9ayThGNkGRhmA15gfhPJDzYOx9sfHmB84seFWnTgVZ0gDduiQgHQn6HpWIWFhj2MHYw0ZdLDB/LDLHUxBmbKXkaGqzBkjFXp/GGXnJRG5kWM9AinR9aD0cF7XqjPa6nno/eRz8LHi4LsBevwG3p2iFDb/rYo17eQ8D8kO+xtcqPWDGNeW3rEgQOdwFJQ1i/ikdBkAb4gvUOBHeA4hPwSWgYlnJ/4nMBnRrvfCKCwZc4F5o9+KkiNg3HJ+jDL1GXYbCkGdwAImsBGDBYX09u1TkFNW5AhxMcrwSqgIjFnzoxRryKCDDWzhA18W2ekfEfm9rjV7szsAAAAASUVORK5CYII=",
+        "url": "https://itch.io",
+        "category": "game-download"
+    },
+    {
+        "name": "itch.io",
+        "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAADO0lEQVR4Ac1XA7DkQBCds23btm1bSWbPVvFs27ZtW6Wzbdte3OX6/Uqq5vJns/v9u6prJ43Xk5nGhkU6cqpqAZeiFDPZrarV3A5HdZM9qlrfyXkLGUMn2sJXxAK218B6ixYxXZwvdWmaHsa8BLGswaORYiMMwoPdmrZNr1w5OjOJhAuhCFdW1fnmnWsQRARTbAVvfx8PEcT3sIFvEbiBb4wy/5YX5SU7eSj53GRuzodIsvQ5cQ1a/5HcWxM4SsBuQCeR/0FPILwXkjiDGMqBTmGRoHhIDaQcZWlpWncl/mnI3eQwlMDKOznPT89XBZ8rzrZt80FHvsNga8h/EnYXYEEHbMFn4X+lqGtaGnSqnw5HOgLZQQZfnJqmUo+ITyDFdUVJQkCdSf6DeJ3epk1yZ5s2uX9rWi6sSbbe0HUKsIUP5/GAASxgAhsxEItZid6uAhmeI3ZajglHd4r4teUIf1GQM2CsLTrYnqLgLy3y34iBWMxKBNTOJrm+kP4p/Xr8yGyPYfvFpgm1ZVYiRV+J8Vc0KvOujGuYYxN8Nmxga+QWl5Y5531kVzDUakj325BJ6JeiZMK96+3axQZjDZnM1qkojay4qLzAhpyPt9z9LhY6BOzdIjZiBTbStAmiEWa5HajOWBQcOR3nLKztbOmNq4rYiCXbwCThjj5gRPsIvliwX2TdhGTcv/e1gcnCLjcyGyL9DEkCTrX14XyD0E0nygymCGXSwevbOBzJKD/6I0fEfIEMOptNt5dsQJ4DP1u3zsB8EFquaY+1L3t0P7L9ayThGNkGRhmA15gfhPJDzYOx9sfHmB84seFWnTgVZ0gDduiQgHQn6HpWIWFhj2MHYw0ZdLDB/LDLHUxBmbKXkaGqzBkjFXp/GGXnJRG5kWM9AinR9aD0cF7XqjPa6nno/eRz8LHi4LsBevwG3p2iFDb/rYo17eQ8D8kO+xtcqPWDGNeW3rEgQOdwFJQ1i/ikdBkAb4gvUOBHeA4hPwSWgYlnJ/4nMBnRrvfCKCwZc4F5o9+KkiNg3HJ+jDL1GXYbCkGdwAImsBGDBYX09u1TkFNW5AhxMcrwSqgIjFnzoxRryKCDDWzhA18W2ekfEfm9rjV7szsAAAAASUVORK5CYII=",
+        "url": "https://itch.io",
+        "category": "game-streaming"
+    },
+    {
+        "name": "Dos Zone",
+        "logo": "data:image/png;base64,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",
+        "url": "https://dos.zone",
+        "category": "game-streaming"
+    },
+    {
+        "name": "Now.gg",
+        "logo": "https://now.gg/6/_next/static/media/nowgg-logo.2eda3eaf.svg",
+        "url": "https://now.gg/",
+        "category": "game-streaming"
+    },
+    {
+        "name": "Armour Games",
+        "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAMAAABF0y+mAAAAaVBMVEVHcEz/0wT/1AT/0wT/1QT/1AT/1QT/0wT/0gT/0gT/0wT/zgT/0QT/hQT/zAT/0ASlhQP/0gT/zwT/1gTuvwTBmgMAAACYegJ5YQKujANnUwLMowPjtgRNPgGKbwL3xgQuJQHYrQO4kwNr/4LDAAAADXRSTlMAOWiE5dD0mqtSswiuYx0ejAAAASFJREFUKJF1kueSgzAMhAk1yWUk5N6o7/+QsZm5o/n2B9h8XksjtiiO+nTFf3q1q2wfWVTWwXnpRPO6WKquAe80MARtPGu6aj/xkaMxMhIGgCCNGf1e/NkTUQQsCIjPuOmPEEFQdFmZvALwCgcQzIxMTMN0g2jVwueBeyXxBoHmiSIMA4c7ZEFtEiwDgffae21jYxmnUJpoVFMO4ui5M1xqzF07YeyWMOuMIjXzbZGBSEpxvMFUJ36xStmVpaXeYdWn4yzIwcmQoLDlH3wsaeDAuNF8M1pxCERrtkZocLS9Tb2zolz6bTDapuKkwykqjfb0+7NJ2ndxUjvKRNOIra7PrPiprYE0ODDrlUW9hbPIeieed5Yy7Z1b6nyqI67Pif4CjMEecE4guLwAAAAASUVORK5CYII=",
+        "url": "https://armorgames.com/",
+        "category": "game-streaming"
+    }
+];
+            renderCategories();
+            renderApps();
+        }
+
+        // Render category buttons
+        function renderCategories() {
+            const categories = [
+                { id: 'all', name: 'All' },
+                { id: 'games', name: 'Games' },
+                { id: 'game-download', name: 'Game Download' },
+                { id: 'movie-streaming', name: 'Movie Streaming' },
+                { id: 'game-streaming', name: 'Game Streaming' }
+            ];
+
+            const categoriesContainer = document.getElementById('categories');
+            categoriesContainer.innerHTML = '';
+
+            categories.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = `category-btn ${cat.id === currentCategory ? 'active' : ''}`;
+                btn.textContent = cat.name;
+                btn.onclick = () => filterCategory(cat.id);
+                categoriesContainer.appendChild(btn);
+            });
+        }
+
+        // Filter apps by category
+        function filterCategory(category) {
+            currentCategory = category;
+            renderCategories();
+            renderApps();
+        }
+
+        // Render apps grid
+        function renderApps() {
+            const appsGrid = document.getElementById('appsGrid');
+            appsGrid.innerHTML = '';
+
+            const filteredApps = currentCategory === 'all' 
+                ? appsData 
+                : appsData.filter(app => app.category === currentCategory);
+
+            filteredApps.forEach(app => {
+                const card = document.createElement('div');
+                card.className = 'app-card';
+                card.tabIndex = 0;
+                card.onclick = () => openApp(app.url);
+                
+                card.innerHTML = `
+                    <div class="app-logo">
+                        <img src="${app.logo}" alt="${app.name}" onerror="this.style.display='none'">
+                    </div>
+                    <div class="app-name">${app.name}</div>
+                `;
+                
+                appsGrid.appendChild(card);
+            });
+        }
+
+        // Open app in iframe
+        function openApp(url) {
+            const iframe = document.getElementById('appFrame');
+            const closeBtn = document.getElementById('closeBtn');
+            
+            iframe.src = url;
+            iframe.style.display = 'block';
+            closeBtn.style.display = 'block';
+        }
+
+        // Close iframe
+        document.getElementById('closeBtn').onclick = function() {
+            const iframe = document.getElementById('appFrame');
+            const closeBtn = document.getElementById('closeBtn');
+            
+            iframe.style.display = 'none';
+            closeBtn.style.display = 'none';
+            iframe.src = '';
+        };
+
+        // Initialize
+        loadApps();
+    </script>
+</body>
+</html>
