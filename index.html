@@ -165,31 +165,40 @@
     </div>
 
     <button class="close-btn" id="closeBtn">Close</button>
-    
-    <webview id="appFrame" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:1000; background:#000;"></webview>
+    <iframe id="appFrame"></iframe>
+
     <script>
+        console.log("🚀 Launcher script initiated successfully.");
         let appsData = [];
         let currentCategory = 'all';
 
-        // Load apps data from JSON configuration
+        // Load apps data from JSON configuration file
         async function loadApps() {
+            console.log("📥 Fetching apps.json...");
             try {
                 const response = await fetch('apps.json');
-                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(`HTTP Error Status: ${response.status}`);
+                }
                 
-                // Flatten data arrays if nested matrix parsed
+                const data = await response.json();
+                console.log("✅ JSON parsed successfully:", data);
+                
+                // Handle nested or flat structural formatting
                 appsData = Array.isArray(data[0]) ? data.flat() : data;
+                console.log(`📦 Loaded ${appsData.length} apps from file.`);
                 
                 renderCategories();
                 renderApps();
             } catch (error) {
-                console.error('Error loading apps.json, falling back to local demo data:', error);
-                loadDemoData();
+                console.error("❌ Failed to parse/load apps.json. Falling back to recovery data:", error);
+                loadBackupData();
             }
         }
 
-        // Offline / CORS local storage fallback simulation database
-        function loadDemoData() {
+        // Hardcoded recovery dataset if Cloudflare network drops apps.json file
+        function loadBackupData() {
+            console.warn("⚠️ Injecting recovery backup dataset to restore screen interface.");
             appsData = [
                 {
                     "name": "NetMirror",
@@ -198,39 +207,22 @@
                     "category": "movie-streaming"
                 },
                 {
-                    "name": "Arise",
-                    "logo": "https://arise-str.vercel.app/logo.jpg",
-                    "url": "https://arise-str.vercel.app",
-                    "category": "movie-streaming"
-                },
-                {
                     "name": "Minecraft Web Client",
                     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcScI9axTRSXG-LyFqfzJUDIUSgud1qRL0oX-Q&s",
                     "url": "https://mcraft.fun/",
                     "category": "games"
-                },
-                {
-                    "name": "Vice City",
-                    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSpHqBTNUQ1iHq3hRmccVSn1InTFlBVz8nO6Q&s",
-                    "url": "https://dos.zone/revcdos/",
-                    "category": "games"
-                },
-                {
-                    "name": "FileCr",
-                    "logo": "data:image/png;base64,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",
-                    "url": "https://filecr.com/pc-games/",
-                    "category": "game-download"
                 }
             ];
             renderCategories();
             renderApps();
         }
 
-        // Generate categorical interface controllers based on loaded entries
+        // Render categorical sorting controllers
         function renderCategories() {
+            console.log("🛠️ Building sorting categories...");
             const categoriesContainer = document.getElementById('categories');
-            
-            // Extract distinct target string entries dynamically
+            if (!categoriesContainer) return console.error("❌ UI Element '#categories' missing from HTML layout!");
+
             const rawCategories = appsData.map(app => app.category).filter(Boolean);
             const uniqueCategories = ['all', ...new Set(rawCategories)];
             
@@ -249,16 +241,25 @@
                 
                 categoriesContainer.appendChild(btn);
             });
+            console.log("✅ Category interface elements populated.");
         }
 
-        // Render card layouts onto grid tracking currentCategory
+        // Render card elements onto display workspace grid 
         function renderApps() {
+            console.log(`🖼️ Rendering apps grid for category: [${currentCategory}]`);
             const appsGrid = document.getElementById('appsGrid');
+            if (!appsGrid) return console.error("❌ UI Element '#appsGrid' missing from HTML layout!");
+
             appsGrid.innerHTML = '';
 
             const filteredApps = currentCategory === 'all' 
                 ? appsData 
                 : appsData.filter(app => app.category === currentCategory);
+
+            if (filteredApps.length === 0) {
+                appsGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #888; padding: 40px;">No applications found inside this configuration scope.</div>`;
+                return;
+            }
 
             filteredApps.forEach(app => {
                 if (!app) return;
@@ -267,33 +268,38 @@
                 card.className = 'app-card';
                 card.tabIndex = 0;
                 card.onclick = () => openApp(app.url);
-                
-                // Keyboard accessibility hook for clean controls navigation
                 card.onkeydown = (e) => { if (e.key === 'Enter') openApp(app.url); };
                 
                 card.innerHTML = `
                     <div class="app-logo">
-                        <img src="${app.logo}" alt="${app.name}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect width=%22100%22 height=%22100%22 fill=%22%23333%22/><text x=%2250%25%22 y=%2255%25%22 font-family=%22Arial%22 font-size=%2212%22 fill=%22%23aaa%22 text-anchor=%22middle%22>No Preview</text></svg>'">
+                        <img src="${app.logo}" alt="${app.name}" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect width=%22100%22 height=%22100%22 fill=%22%23333%22/><text x=%2250%25%22 y=%2255%25%22 font-family=%22Arial%22 font-size=%2212%22 fill=%22%23aaa%22 text-anchor=%22middle%22>No Preview</text></svg>';">
                     </div>
                     <div class="app-name">${app.name}</div>
                 `;
                 
                 appsGrid.appendChild(card);
             });
+            console.log("✅ App grid population sequence finished.");
         }
 
-        // Pipe destination target inside Full-Screen Frame using serverless proxy functions
-function openApp(url) {
-    const webview = document.getElementById('appFrame');
-    const closeBtn = document.getElementById('closeBtn');
+        // Open app frame pipeline
+        function openApp(url) {
+            console.log(`🛰️ Forwarding destination target to Cloudflare proxy: ${url}`);
+            const iframe = document.getElementById('appFrame');
+            const closeBtn = document.getElementById('closeBtn');
+            
+            if (!iframe || !closeBtn) return console.error("❌ Viewport elements layout missing!");
 
-    webview.src = url; // Directly loads secure HTTPS/HTTP links cleanly
-    webview.style.display = 'block';
-    closeBtn.style.display = 'block';
-}
+            const proxyUrl = `/proxy?url=${encodeURIComponent(url)}`;
+            
+            iframe.src = proxyUrl;
+            iframe.style.display = 'block';
+            closeBtn.style.display = 'block';
+        }
 
-        // Clear view target state definitions
+        // Close app frame layout sequence
         document.getElementById('closeBtn').onclick = function() {
+            console.log("🔌 Unmounting app window frame.");
             const iframe = document.getElementById('appFrame');
             const closeBtn = document.getElementById('closeBtn');
             
@@ -302,7 +308,7 @@ function openApp(url) {
             iframe.src = '';
         };
 
-        // Run application script setup cycle
+        // Initialize execution run
         loadApps();
     </script>
 </body>
