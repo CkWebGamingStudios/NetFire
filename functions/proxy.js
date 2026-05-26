@@ -1,8 +1,6 @@
 export async function onRequest(context) {
   const { request } = context;
   const urlObj = new URL(request.url);
-  
-  // Extract the target parameter from /proxy?url=...
   const targetUrl = urlObj.searchParams.get("url");
   
   if (!targetUrl) {
@@ -12,7 +10,6 @@ export async function onRequest(context) {
   try {
     const parsedTarget = new URL(targetUrl);
     
-    // Construct a clean request object to forward to the target site
     const modifiedRequest = new Request(targetUrl, {
       method: request.method,
       headers: new Headers(request.headers),
@@ -20,7 +17,6 @@ export async function onRequest(context) {
       redirect: "follow"
     });
 
-    // Spoof headers to prevent target site firewalls from blocking the request
     modifiedRequest.headers.set("Origin", parsedTarget.origin);
     modifiedRequest.headers.set("Referer", parsedTarget.origin);
     modifiedRequest.headers.set(
@@ -28,20 +24,41 @@ export async function onRequest(context) {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     );
 
-    // Fetch the external target webpage asset data
     const response = await fetch(modifiedRequest);
+    const contentType = response.headers.get("content-type") || "";
 
-    // Create a mutable copy of the target response headers
+    // Modify the headers to remove frame constraints
     const newHeaders = new Headers(response.headers);
-
-    // CRITICAL: Wipe out frame limitations to allow rendering inside your launcher's iframe
     newHeaders.delete("x-frame-options");
     newHeaders.delete("content-security-policy");
-    
-    // Add relaxed CORS access controls explicitly 
     newHeaders.set("Access-Control-Allow-Origin", "*");
 
-    // Return the altered page directly back to your local iframe
+    // IF THE RESOURCE IS HTML: Inject the <base> tag to fix relative assets
+    if (contentType.includes("text/html")) {
+      let htmlText = await response.text();
+      
+      // Ensure the target URL ends with a trailing slash for proper relative asset resolution
+      const baseOrigin = targetUrl.endsWith('/') ? targetUrl : targetUrl + '/';
+      const baseTag = `<head><base href="${baseOrigin}">`;
+      
+      // Inject our base rules right where the head element begins
+      if (htmlText.includes("<head>")) {
+        htmlText = htmlText.replace("<head>", baseTag);
+      } else if (htmlText.includes("<HEAD>")) {
+        htmlText = htmlText.replace("<HEAD>", baseTag);
+      } else {
+        // Fallback if no head tag exists in the source DOM
+        htmlText = `<base href="${baseOrigin}">` + htmlText;
+      }
+
+      return new Response(htmlText, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders
+      });
+    }
+
+    // For images, stylesheets, or direct JS assets, pipe the raw body stream straight through
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
