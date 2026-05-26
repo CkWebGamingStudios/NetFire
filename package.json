@@ -23,5 +23,8 @@
   "dependencies": {
     "express": "^5.2.1",
     "http-proxy-middleware": "^4.0.0"
+  },
+  "devDependencies": {
+    "electron": "^42.2.0"
   }
 }
