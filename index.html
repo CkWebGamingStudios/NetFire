@@ -248,31 +248,27 @@
                 return;
             }
 
-            filteredApps.forEach(app => {
-                if (!app) return;
+            // Locate where you map over your apps data and update the event hooks:
+filteredApps.forEach(app => {
+    if (!app) return;
 
-                const card = document.createElement('div');
-                card.className = 'app-card';
-                card.tabIndex = 0;
-                card.onclick = () => openApp(app.url);
-                card.onkeydown = (e) => { if (e.key === 'Enter') openApp(app.url); };
-                
-                card.innerHTML = `
-                    <div class="app-logo">
-                        <img src="${app.logo}" alt="${app.name}" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect width=%22100%22 height=%22100%22 fill=%22%23333%22/><text x=%2250%25%22 y=%2255%25%22 font-family=%22Arial%22 font-size=%2212%22 fill=%22%23aaa%22 text-anchor=%22middle%22>No Preview</text></svg>';">
-                    </div>
-                    <div class="app-name">${app.name}</div>
-                `;
-                
-                appsGrid.appendChild(card);
-            });
-            console.log("✅ App grid population sequence finished.");
-        }
-
-        // Native Puter UI Desktop Launch Mechanism
-        // Native Puter UI Desktop Window Spawner (V2 Fixed)
-// Lightweight, browser-native container spawner
-// Lightweight, browser-native container spawner with event interception
+    const card = document.createElement('div');
+    card.className = 'app-card';
+    card.tabIndex = 0;
+    
+    // CRITICAL: Pass the native 'event' keyword straight into the function parameter
+    card.onclick = (e) => openApp(app.url, e);
+    card.onkeydown = (e) => { if (e.key === 'Enter') openApp(app.url, e); };
+    
+    card.innerHTML = `
+        <div class="app-logo">
+            <img src="${app.logo}" alt="${app.name}" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect width=%22100%22 height=%22100%22 fill=%22%23333%22/><text x=%2250%25%22 y=%2255%25%22 font-family=%22Arial%22 font-size=%2212%22 fill=%22%23aaa%22 text-anchor=%22middle%22>No Preview</text></svg>';">
+        </div>
+        <div class="app-name">${app.name}</div>
+    `;
+    
+    appsGrid.appendChild(card);
+});
 function openApp(url, event) {
     // Stop the browser from triggering default link behavior or bubbling up
     if (event) {
