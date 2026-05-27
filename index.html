@@ -283,19 +283,48 @@
         }
 
         // Open app frame pipeline
-        function openApp(url) {
-            console.log(`🛰️ Forwarding destination target to Cloudflare proxy: ${url}`);
-            const iframe = document.getElementById('appFrame');
-            const closeBtn = document.getElementById('closeBtn');
-            
-            if (!iframe || !closeBtn) return console.error("❌ Viewport elements layout missing!");
+        async function openApp(url) {
+    console.log(`🛰️ Routing destination target via Puter.js proxy: ${url}`);
+    const iframe = document.getElementById('appFrame');
+    const closeBtn = document.getElementById('closeBtn');
+    
+    if (!iframe || !closeBtn) return console.error("❌ Viewport elements layout missing!");
 
-            const proxyUrl = `/proxy?url=${encodeURIComponent(url)}`;
-            
-            iframe.src = proxyUrl;
-            iframe.style.display = 'block';
-            closeBtn.style.display = 'block';
+    // Show the window workspace and display a loading indicator if necessary
+    iframe.style.display = 'block';
+    closeBtn.style.display = 'block';
+
+    try {
+        // 1. Fetch the remote site content through Puter's unrestricted network stack
+        const response = await puter.net.fetch(url);
+        let htmlText = await response.text();
+        
+        // 2. Format a clean destination reference for asset routing
+        const baseOrigin = url.endsWith('/') ? url : url + '/';
+        
+        // 3. Inject the <base> tag right at the top of the head block so relative resources load
+        const baseTag = `<head><base href="${baseOrigin}">`;
+        if (htmlText.includes("<head>")) {
+            htmlText = htmlText.replace("<head>", baseTag);
+        } else if (htmlText.includes("<HEAD>")) {
+            htmlText = htmlText.replace("<HEAD>", baseTag);
+        } else {
+            htmlText = `<base href="${baseOrigin}">` + htmlText;
         }
+
+        // 4. Safely pipe the fully rendered and compiled source right into the iframe view
+        const blob = new Blob([htmlText], { type: 'text/html' });
+        iframe.src = URL.createObjectURL(blob);
+        console.log("✅ Site source successfully virtualized and painted via Puter environment client.");
+
+    } catch (error) {
+        console.error("❌ Puter retrieval execution failed:", error);
+        iframe.srcdoc = `<div style="color: white; text-align: center; padding: 50px; font-family: Arial;">
+            <h3>Failed to load application via cloud proxy</h3>
+            <p>${error.message}</p>
+        </div>`;
+    }
+}
 
         // Close app frame layout sequence
         document.getElementById('closeBtn').onclick = function() {
