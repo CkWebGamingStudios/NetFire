@@ -10,44 +10,72 @@ export async function onRequest(context) {
   try {
     const parsedTarget = new URL(targetUrl);
     
+    // 1. Gather all authentic visitor headers sent by the user's actual browser
+    const forwardHeaders = new Headers();
+    
+    // List of standard headers we want to pass through cleanly
+    const headersToCopy = [
+      "user-agent",
+      "accept",
+      "accept-language",
+      "accept-encoding",
+      "cache-control",
+      "pragma"
+    ];
+
+    for (const headerName of headersToCopy) {
+      const value = request.headers.get(headerName);
+      if (value) {
+        forwardHeaders.set(headerName, value);
+      }
+    }
+
+    // 2. Extract the user's real IP and network metadata provided by Cloudflare
+    const visitorIP = request.headers.get("CF-Connecting-IP") || "";
+    const visitorCountry = request.headers.get("CF-IPCountry") || "";
+
+    // 3. Inject explicit forwarding headers used by proxies
+    if (visitorIP) {
+      forwardHeaders.set("X-Forwarded-For", visitorIP);
+      forwardHeaders.set("X-Real-IP", visitorIP);
+    }
+    if (visitorCountry) {
+      forwardHeaders.set("CF-IPCountry", visitorCountry);
+    }
+
+    // 4. Force host matching to avoid instant data-center routing rejections
+    forwardHeaders.set("Host", parsedTarget.host);
+    forwardHeaders.set("Origin", parsedTarget.origin);
+    forwardHeaders.set("Referer", parsedTarget.origin);
+
+    // Create the modified outgoing request configuration
     const modifiedRequest = new Request(targetUrl, {
       method: request.method,
-      headers: new Headers(request.headers),
-      body: request.body,
+      headers: forwardHeaders,
+      body: request.method !== "GET" && request.method !== "HEAD" ? request.body : null,
       redirect: "follow"
     });
-
-    modifiedRequest.headers.set("Origin", parsedTarget.origin);
-    modifiedRequest.headers.set("Referer", parsedTarget.origin);
-    modifiedRequest.headers.set(
-      "User-Agent",
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    );
 
     const response = await fetch(modifiedRequest);
     const contentType = response.headers.get("content-type") || "";
 
-    // Modify the headers to remove frame constraints
+    // Build mutable response headers to clear frame barriers
     const newHeaders = new Headers(response.headers);
     newHeaders.delete("x-frame-options");
     newHeaders.delete("content-security-policy");
     newHeaders.set("Access-Control-Allow-Origin", "*");
 
-    // IF THE RESOURCE IS HTML: Inject the <base> tag to fix relative assets
+    // Handle relative pathway DOM manipulation via <base> tag injection
     if (contentType.includes("text/html")) {
       let htmlText = await response.text();
-      
-      // Ensure the target URL ends with a trailing slash for proper relative asset resolution
       const baseOrigin = targetUrl.endsWith('/') ? targetUrl : targetUrl + '/';
       const baseTag = `<head><base href="${baseOrigin}">`;
       
-      // Inject our base rules right where the head element begins
       if (htmlText.includes("<head>")) {
         htmlText = htmlText.replace("<head>", baseTag);
       } else if (htmlText.includes("<HEAD>")) {
         htmlText = htmlText.replace("<HEAD>", baseTag);
       } else {
-        // Fallback if no head tag exists in the source DOM
         htmlText = `<base href="${baseOrigin}">` + htmlText;
       }
 
@@ -58,7 +86,7 @@ export async function onRequest(context) {
       });
     }
 
-    // For images, stylesheets, or direct JS assets, pipe the raw body stream straight through
+    // Pass through binary data (images, scripts, styles) smoothly
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
