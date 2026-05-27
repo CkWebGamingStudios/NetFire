@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="https://js.puter.com/v2/"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App Launcher</title>
+    <title>Apps & Games Launcher</title>
+    <script src="https://js.puter.com/v2/"></script>
     <style>
         * {
             margin: 0;
@@ -16,6 +16,7 @@
             font-family: Arial, sans-serif;
             background: #0f0f0f;
             color: #fff;
+            overflow-x: hidden;
         }
 
         .container {
@@ -32,6 +33,7 @@
             font-size: 1.8rem;
             font-weight: normal;
             margin-bottom: 20px;
+            letter-spacing: 0.5px;
         }
 
         .categories {
@@ -52,6 +54,7 @@
 
         .categories::-webkit-scrollbar-thumb {
             background: #444;
+            border-radius: 4px;
         }
 
         .category-btn {
@@ -64,7 +67,7 @@
             white-space: nowrap;
             font-size: 0.95rem;
             text-transform: uppercase;
-            transition: background 0.2s;
+            transition: background 0.2s, color 0.2s;
         }
 
         .category-btn:hover {
@@ -74,6 +77,7 @@
         .category-btn.active {
             background: #fff;
             color: #000;
+            font-weight: bold;
         }
 
         .apps-grid {
@@ -88,11 +92,13 @@
             padding: 15px;
             cursor: pointer;
             transition: transform 0.2s, background 0.2s;
+            border: 1px solid #222;
         }
 
         .app-card:hover {
-            transform: scale(1.05);
+            transform: scale(1.04);
             background: #252525;
+            border-color: #444;
         }
 
         .app-card:focus {
@@ -115,43 +121,21 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
+            padding: 5px;
         }
 
         .app-name {
             font-size: 0.95rem;
             font-weight: normal;
             text-align: center;
+            color: #ccc;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
         }
 
-        iframe {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
-            z-index: 1000;
-            background: #000;
-        }
-
-        .close-btn {
-            display: none;
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #fff;
-            color: #000;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            z-index: 1001;
-            font-size: 1rem;
-        }
-
-        .close-btn:hover {
-            background: #ddd;
+        .app-card:hover .app-name {
+            color: #fff;
         }
     </style>
 </head>
@@ -165,15 +149,17 @@
         <div class="apps-grid" id="appsGrid"></div>
     </div>
 
-    <button class="close-btn" id="closeBtn">Close</button>
-    <iframe id="appFrame"></iframe>
-
     <script>
+        // Silence Puter submission reminders in console logs
+        if (window.puter) {
+            puter.quiet = true;
+        }
+        
         console.log("🚀 Launcher script initiated successfully.");
         let appsData = [];
         let currentCategory = 'all';
 
-        // Load apps data from JSON configuration file
+        // Fetch application setup data
         async function loadApps() {
             console.log("📥 Fetching apps.json...");
             try {
@@ -185,7 +171,7 @@
                 const data = await response.json();
                 console.log("✅ JSON parsed successfully:", data);
                 
-                // Handle nested or flat structural formatting
+                // Flatten array configuration maps if multi-bracketed
                 appsData = Array.isArray(data[0]) ? data.flat() : data;
                 console.log(`📦 Loaded ${appsData.length} apps from file.`);
                 
@@ -197,28 +183,28 @@
             }
         }
 
-        // Hardcoded recovery dataset if Cloudflare network drops apps.json file
+        // Offline / Network Failure Recovery Mode
         function loadBackupData() {
             console.warn("⚠️ Injecting recovery backup dataset to restore screen interface.");
             appsData = [
-                {
-                    "name": "NetMirror",
-                    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSKXAeXvm1XEDt6TJJBo4nmFGp7WrzfR_JYlQ&s",
-                    "url": "https://net22.cc",
-                    "category": "movie-streaming"
-                },
                 {
                     "name": "Minecraft Web Client",
                     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcScI9axTRSXG-LyFqfzJUDIUSgud1qRL0oX-Q&s",
                     "url": "https://mcraft.fun/",
                     "category": "games"
+                },
+                {
+                    "name": "SteamRip",
+                    "logo": "https://steamrip.com/wp-content/uploads/2021/06/Site-logo3.png.webp",
+                    "url": "https://steamrip.com/",
+                    "category": "game-download"
                 }
             ];
             renderCategories();
             renderApps();
         }
 
-        // Render categorical sorting controllers
+        // Render dynamic filter arrays
         function renderCategories() {
             console.log("🛠️ Building sorting categories...");
             const categoriesContainer = document.getElementById('categories');
@@ -245,7 +231,7 @@
             console.log("✅ Category interface elements populated.");
         }
 
-        // Render card elements onto display workspace grid 
+        // Mount program cards onto display viewport grid 
         function renderApps() {
             console.log(`🖼️ Rendering apps grid for category: [${currentCategory}]`);
             const appsGrid = document.getElementById('appsGrid');
@@ -258,7 +244,7 @@
                 : appsData.filter(app => app.category === currentCategory);
 
             if (filteredApps.length === 0) {
-                appsGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #888; padding: 40px;">No applications found inside this configuration scope.</div>`;
+                appsGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #888; padding: 40px;">No applications configured in this layout bracket.</div>`;
                 return;
             }
 
@@ -283,62 +269,22 @@
             console.log("✅ App grid population sequence finished.");
         }
 
-        // Open app frame pipeline
-        async function openApp(url) {
-    console.log(`🛰️ Routing destination target via Puter.js proxy: ${url}`);
-    const iframe = document.getElementById('appFrame');
-    const closeBtn = document.getElementById('closeBtn');
-    
-    if (!iframe || !closeBtn) return console.error("❌ Viewport elements layout missing!");
-
-    // Show the window workspace and display a loading indicator if necessary
-    iframe.style.display = 'block';
-    closeBtn.style.display = 'block';
-
-    try {
-        // 1. Fetch the remote site content through Puter's unrestricted network stack
-        const response = await puter.net.fetch(url);
-        let htmlText = await response.text();
-        
-        // 2. Format a clean destination reference for asset routing
-        const baseOrigin = url.endsWith('/') ? url : url + '/';
-        
-        // 3. Inject the <base> tag right at the top of the head block so relative resources load
-        const baseTag = `<head><base href="${baseOrigin}">`;
-        if (htmlText.includes("<head>")) {
-            htmlText = htmlText.replace("<head>", baseTag);
-        } else if (htmlText.includes("<HEAD>")) {
-            htmlText = htmlText.replace("<HEAD>", baseTag);
-        } else {
-            htmlText = `<base href="${baseOrigin}">` + htmlText;
+        // Native Puter UI Desktop Launch Mechanism
+        function openApp(url) {
+            console.log(`🛰️ Spawning target destination via Puter UI Window System: ${url}`);
+            
+            try {
+                // Instantly opens the target site in a completely isolated, un-sandboxed window layer
+                puter.ui.launch(url);
+                console.log("✅ Window command sent to Puter desktop client layer environment.");
+            } catch (error) {
+                console.error("❌ Puter window management driver threw an error:", error);
+                console.log("🔌 Redirecting target out to browser layout system fallback tab instead...");
+                window.open(url, '_blank');
+            }
         }
 
-        // 4. Safely pipe the fully rendered and compiled source right into the iframe view
-        const blob = new Blob([htmlText], { type: 'text/html' });
-        iframe.src = URL.createObjectURL(blob);
-        console.log("✅ Site source successfully virtualized and painted via Puter environment client.");
-
-    } catch (error) {
-        console.error("❌ Puter retrieval execution failed:", error);
-        iframe.srcdoc = `<div style="color: white; text-align: center; padding: 50px; font-family: Arial;">
-            <h3>Failed to load application via cloud proxy</h3>
-            <p>${error.message}</p>
-        </div>`;
-    }
-}
-
-        // Close app frame layout sequence
-        document.getElementById('closeBtn').onclick = function() {
-            console.log("🔌 Unmounting app window frame.");
-            const iframe = document.getElementById('appFrame');
-            const closeBtn = document.getElementById('closeBtn');
-            
-            iframe.style.display = 'none';
-            closeBtn.style.display = 'none';
-            iframe.src = '';
-        };
-
-        // Initialize execution run
+        // Kick off execution sequence
         loadApps();
     </script>
 </body>
