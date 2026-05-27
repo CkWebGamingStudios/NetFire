@@ -93,6 +93,7 @@
             cursor: pointer;
             transition: transform 0.2s, background 0.2s;
             border: 1px solid #222;
+            user-select: none;
         }
 
         .app-card:hover {
@@ -115,6 +116,7 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            pointer-events: none; /* Prevents inner image clicks from breaking events */
         }
 
         .app-logo img {
@@ -132,6 +134,7 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             overflow: hidden;
+            pointer-events: none;
         }
 
         .app-card:hover .app-name {
@@ -150,7 +153,6 @@
     </div>
 
     <script>
-        // Silence Puter submission reminders in console logs
         if (window.puter) {
             puter.quiet = true;
         }
@@ -159,7 +161,6 @@
         let appsData = [];
         let currentCategory = 'all';
 
-        // Fetch application setup data
         async function loadApps() {
             console.log("📥 Fetching apps.json...");
             try {
@@ -171,7 +172,6 @@
                 const data = await response.json();
                 console.log("✅ JSON parsed successfully:", data);
                 
-                // Flatten array configuration maps if multi-bracketed
                 appsData = Array.isArray(data[0]) ? data.flat() : data;
                 console.log(`📦 Loaded ${appsData.length} apps from file.`);
                 
@@ -183,9 +183,8 @@
             }
         }
 
-        // Offline / Network Failure Recovery Mode
         function loadBackupData() {
-            console.warn("⚠️ Injecting recovery backup dataset to restore screen interface.");
+            console.warn("⚠️ Injecting recovery backup dataset.");
             appsData = [
                 {
                     "name": "Minecraft Web Client",
@@ -204,11 +203,9 @@
             renderApps();
         }
 
-        // Render dynamic filter arrays
         function renderCategories() {
-            console.log("🛠️ Building sorting categories...");
             const categoriesContainer = document.getElementById('categories');
-            if (!categoriesContainer) return console.error("❌ UI Element '#categories' missing from HTML layout!");
+            if (!categoriesContainer) return;
 
             const rawCategories = appsData.map(app => app.category).filter(Boolean);
             const uniqueCategories = ['all', ...new Set(rawCategories)];
@@ -228,14 +225,12 @@
                 
                 categoriesContainer.appendChild(btn);
             });
-            console.log("✅ Category interface elements populated.");
         }
 
-        // Mount program cards onto display viewport grid 
         function renderApps() {
             console.log(`🖼️ Rendering apps grid for category: [${currentCategory}]`);
             const appsGrid = document.getElementById('appsGrid');
-            if (!appsGrid) return console.error("❌ UI Element '#appsGrid' missing from HTML layout!");
+            if (!appsGrid) return;
 
             appsGrid.innerHTML = '';
 
@@ -255,10 +250,18 @@
                 card.className = 'app-card';
                 card.tabIndex = 0;
                 
-                // CRITICAL: Pass the native click event to halt background redirects
-                card.onclick = (e) => openApp(app.url, e);
-                card.onkeydown = (e) => { if (e.key === 'Enter') openApp(app.url, e); };
+                // FORCEFUL INTERCEPTION: We intercept the event directly inside an explicit function wrap
+                card.onclick = function(e) {
+                    openApp(app.url, e);
+                };
                 
+                card.onkeydown = function(e) {
+                    if (e.key === 'Enter') {
+                        openApp(app.url, e);
+                    }
+                };
+                
+                // Clean layout: No anchor tags inside here to leak redirects!
                 card.innerHTML = `
                     <div class="app-logo">
                         <img src="${app.logo}" alt="${app.name}" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect width=%22100%22 height=%22100%22 fill=%22%23333%22/><text x=%2250%25%22 y=%2255%25%22 font-family=%22Arial%22 font-size=%2212%22 fill=%22%23aaa%22 text-anchor=%22middle%22>No Preview</text></svg>';">
@@ -271,38 +274,32 @@
             console.log("✅ App grid population sequence finished.");
         }
 
-        // Lightweight, browser-native isolated container spawner
+        // Clean, window-level popup constructor
         function openApp(url, event) {
-            // Cut off default event bubbling to stop the main page from redirecting
+            // Drop everything to freeze the main launcher page completely
             if (event) {
                 event.preventDefault();
                 event.stopPropagation();
             }
 
-            console.log(`🛰️ Spawning target destination via untracked environment channel: ${url}`);
+            console.log(`🛰️ Instantiating clean browser-native view for: ${url}`);
             
-            try {
-                // Open new app context with noopener/noreferrer to clean the tracker footprint
-                const appInstance = window.open(
-                    url, 
-                    '_blank', 
-                    'noopener=yes,noreferrer=yes,menubar=yes,toolbar=yes,location=yes,status=yes'
-                );
-                
-                if (appInstance) {
-                    console.log("✅ App isolated window successfully initiated via browser window layer.");
-                } else {
-                    // Fallback to active tab redirect if user's browser blocks popups completely
-                    console.warn("⚠️ Window block detected. Forcing redirect pipeline fallback inside current window.");
-                    window.location.href = url;
-                }
-            } catch (error) {
-                console.error("❌ Isolated window deployment failed:", error);
-                window.open(url, '_blank', 'noopener=yes,noreferrer=yes');
+            // open a fresh popup window instance with untracked referral flags
+            const popupWindow = window.open(
+                url, 
+                '_blank', 
+                'noopener=yes,noreferrer=yes,width=1200,height=800,menubar=no,status=no,toolbar=no'
+            );
+            
+            if (popupWindow) {
+                console.log("✅ Popup window initialized safely.");
+            } else {
+                // If the browser popup blocker is locking things down, provide an alert instruction instead of a hard redirect
+                console.warn("⚠️ Browser blocked the popup window!");
+                alert("Please enable popups for this site to let games launch in separate window containers!");
             }
         }
 
-        // Kick off execution sequence
         loadApps();
     </script>
 </body>
