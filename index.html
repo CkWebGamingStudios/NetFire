@@ -272,7 +272,14 @@
         // Native Puter UI Desktop Launch Mechanism
         // Native Puter UI Desktop Window Spawner (V2 Fixed)
 // Lightweight, browser-native container spawner
-function openApp(url) {
+// Lightweight, browser-native container spawner with event interception
+function openApp(url, event) {
+    // Stop the browser from triggering default link behavior or bubbling up
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
     console.log(`🛰️ Spawning target destination via untracked environment channel: ${url}`);
     
     try {
@@ -286,14 +293,13 @@ function openApp(url) {
         if (appInstance) {
             console.log("✅ App isolated window successfully initiated via browser window layer.");
         } else {
-            // If a browser popup blocker stops the action, fall back to a standard redirect block
-            console.warn("⚠️ Window block detected. Forcing redirect pipeline fallback.");
+            // If a browser popup blocker stops the window pop-up, ONLY THEN redirect the main tab
+            console.warn("⚠️ Window block detected. Forcing redirect pipeline fallback inside current window.");
             window.location.href = url;
         }
     } catch (error) {
         console.error("❌ Isolated window deployment failed:", error);
-        // Absolute absolute fallback path
-        window.open(url, '_blank');
+        window.open(url, '_blank', 'noopener=yes,noreferrer=yes');
     }
 }
         // Kick off execution sequence
