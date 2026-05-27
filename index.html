@@ -271,25 +271,28 @@
 
         // Native Puter UI Desktop Launch Mechanism
         // Native Puter UI Desktop Window Spawner (V2 Fixed)
+// Lightweight, browser-native container spawner
 function openApp(url) {
-    console.log(`🛰️ Spawning target destination via Puter UI Window System: ${url}`);
+    console.log(`🛰️ Spawning target destination via untracked environment channel: ${url}`);
     
     try {
-        // Create a native Puter v2 Window instance
-        const appWindow = new puter.ui.Window({
-            title: "App View",
-            width: 1024,
-            height: 768,
-            autoShow: true
-        });
-
-        // Point the window to load your application URL
-        appWindow.loadURL(url);
+        // Use window.open with strict configuration properties to clean tracking footprints
+        const appInstance = window.open(
+            url, 
+            '_blank', 
+            'noopener=yes,noreferrer=yes,menubar=yes,toolbar=yes,location=yes,status=yes'
+        );
         
-        console.log("✅ Window created and URL loaded inside Puter desktop environment.");
+        if (appInstance) {
+            console.log("✅ App isolated window successfully initiated via browser window layer.");
+        } else {
+            // If a browser popup blocker stops the action, fall back to a standard redirect block
+            console.warn("⚠️ Window block detected. Forcing redirect pipeline fallback.");
+            window.location.href = url;
+        }
     } catch (error) {
-        console.error("❌ Puter window management driver threw an error:", error);
-        console.log("🔌 Redirecting target out to browser layout system fallback tab instead...");
+        console.error("❌ Isolated window deployment failed:", error);
+        // Absolute absolute fallback path
         window.open(url, '_blank');
     }
 }
